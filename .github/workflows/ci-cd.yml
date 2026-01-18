@@ -20,12 +20,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest-cov flake8 bandit safety
+          pip install pytest pytest-cov flake8 bandit safety
 
       - name: Lint
         run: flake8 . || true
 
-      - name: Run tests + coverage
+      - name: Run tests with coverage
         run: |
           pytest --cov=app --cov-report=xml --cov-report=html
 
@@ -50,6 +50,11 @@ jobs:
           bandit -r . -f json -o bandit.json || true
           safety check || true
 
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: bandit.json
 
   build:
     needs: security
@@ -57,13 +62,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create artifact
+      - name: Create build artifact
         run: |
           mkdir build
           cp app.py build/
           tar -czf flask-app.tar.gz build
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
           name: flask-app-artifact
           path: flask-app.tar.gz
@@ -73,16 +79,20 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploying to STAGING server"
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to STAGING environment"
 
   deploy-production:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploying to PRODUCTION server"
+      - name: Deploy to production
+        run: |
+          echo "Deploying to PRODUCTION environment"
 
-    notify:
+  notify:
     if: always()
     needs: [test, security, build]
     runs-on: ubuntu-latest
@@ -106,8 +116,8 @@ jobs:
             Commit SHA : ${{ github.sha }}
             Triggered by : ${{ github.actor }}
 
-            Workflow    : ${{ github.workflow }}
-            Run ID      : ${{ github.run_id }}
+            Workflow : ${{ github.workflow }}
+            Run ID   : ${{ github.run_id }}
 
             Logs:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -133,10 +143,8 @@ jobs:
             Commit SHA : ${{ github.sha }}
             Triggered by : ${{ github.actor }}
 
-            Failed Job : ${{ github.job }}
-
-            Workflow    : ${{ github.workflow }}
-            Run ID      : ${{ github.run_id }}
+            Workflow : ${{ github.workflow }}
+            Run ID   : ${{ github.run_id }}
 
             Logs:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -145,4 +153,3 @@ jobs:
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions
-

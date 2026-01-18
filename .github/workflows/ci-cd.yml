@@ -2,144 +2,160 @@ name: Flask CI/CD Pipeline
 
 on:
   push:
-    branches: [main, staging]
-    tags: ["v*"]
+    branches:
+      - main
+      - staging
+    tags:
+      - 'v*'
   pull_request:
+    branches:
+      - main
+      - staging
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.9'
+  FLASK_APP: app.py
 
 jobs:
 
   test:
+    name: Test Application
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
-
+      
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-cov flake8 bandit safety
+          pip install pytest pytest-cov flake8
 
       - name: Lint
         run: flake8 . || true
 
-      - name: Run tests with coverage
+      - name: Run Tests
         run: |
-          pytest --cov=app --cov-report=xml --cov-report=html
+          pytest test_app.py -v --junitxml=test-results.xml
 
-      - name: Upload test results
+      - name: Upload Test Results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: .
+          path: test-results.xml
 
   security:
+    name: Security Scan
     needs: test
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install security tools
+      - name: Install Tools
         run: |
           pip install bandit safety
 
-      - name: Run security scan
-        run: |
-          bandit -r . -f json -o bandit.json || true
-          safety check || true
+      - name: Run Bandit
+        run: bandit -r app.py || true
 
-      - name: Upload security report
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-report
-          path: bandit.json
+      - name: Run Safety
+        run: safety check || true
 
   build:
-    needs: security
+    name: Build Application
+    needs: [test, security]
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create build artifact
+      - name: Create Artifact
         run: |
           mkdir build
           cp app.py build/
           tar -czf flask-app.tar.gz build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: flask-app-artifact
+          name: flask-app
           path: flask-app.tar.gz
 
   deploy-staging:
-    if: github.ref == 'refs/heads/staging'
+    name: Deploy to Staging
     needs: build
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Deploy to staging
-        run: echo "Deploying to STAGING environment"
+      - run: echo "Deploying to STAGING..."
+
+      - name: Send Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ STAGING Deployment Success"
+          to: priyankpandey02@gmail.com
+          from: GitHub Actions
+          body: |
+            Staging deployment successful
+            Repo: ${{ github.repository }}
+            Commit: ${{ github.sha }}
 
   deploy-production:
-    if: startsWith(github.ref, 'refs/tags/')
+    name: Deploy to Production
     needs: build
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Deploy to production
-        run: echo "Deploying to PRODUCTION environment"
+      - run: echo "Deploying to PRODUCTION..."
 
-  notify:
-    if: always()
-    needs: [test, security, build]
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Send SUCCESS email
-        if: success()
+      - name: Send Email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 587
-          secure: false
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "✅ CI/CD SUCCESS - Flask App"
+          subject: "🚀 PRODUCTION Deployment Success"
+          to: priyankpandey02@gmail.com
+          from: GitHub Actions
           body: |
-            🎉 PIPELINE SUCCESS
+            Production deployment successful
+            Repo: ${{ github.repository }}
+            Tag: ${{ github.ref_name }}
 
-            Repository: ${{ github.repository }}
-            Branch/Tag: ${{ github.ref_name }}
-            Commit: ${{ github.sha }}
-            Triggered by: ${{ github.actor }}
-
-            Logs:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          to: ${{ secrets.EMAIL_TO }}
-          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
-
-      - name: Send FAILURE email
-        if: failure()
+  notify-failure:
+    name: Notify on Failure
+    needs: [test, security, build, deploy-staging, deploy-production]
+    if: failure()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Failure Email
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 587
-          secure: false
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "❌ CI/CD FAILED - Flask App"
+          subject: "❌ PIPELINE FAILED"
+          to: priyankpandey02@gmail.com
+          from: GitHub Actions
           body: |
-            ❌ PIPELINE FAILURE
-
-            Repository: ${{ github.repository }}
-            Branch/Tag: ${{ github.ref_name }}
+            Pipeline FAILED
+            Repo: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
-            Triggered by: ${{ github.actor }}
 
             Logs:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          to: ${{ secrets.EMAIL_TO }}
-          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>

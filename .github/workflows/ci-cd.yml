@@ -103,8 +103,8 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "✅ STAGING Deployment Success"
-          to: priyankpandey02@gmail.com
-          from: GitHub Actions
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
           body: |
             Staging deployment successful
             Repo: ${{ github.repository }}

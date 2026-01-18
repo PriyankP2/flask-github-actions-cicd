@@ -80,8 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to staging
-        run: |
-          echo "Deploying to STAGING environment"
+        run: echo "Deploying to STAGING environment"
 
   deploy-production:
     if: startsWith(github.ref, 'refs/tags/')
@@ -89,16 +88,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to production
-        run: |
-          echo "Deploying to PRODUCTION environment"
+        run: echo "Deploying to PRODUCTION environment"
 
   notify:
     if: always()
     needs: [test, security, build]
     runs-on: ubuntu-latest
-
     steps:
-            - name: Send SUCCESS email
+
+      - name: Send SUCCESS email
         if: success()
         uses: dawidd6/action-send-mail@v3
         with:
@@ -109,10 +107,15 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "✅ CI/CD SUCCESS - Flask App"
           body: |
-            Pipeline SUCCESS 🎉
-            Repo: ${{ github.repository }}
-            Ref: ${{ github.ref }}
+            🎉 PIPELINE SUCCESS
+
+            Repository: ${{ github.repository }}
+            Branch/Tag: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+
+            Logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
@@ -128,11 +131,15 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "❌ CI/CD FAILED - Flask App"
           body: |
-            Pipeline FAILED ❌
-            Repo: ${{ github.repository }}
-            Ref: ${{ github.ref }}
+            ❌ PIPELINE FAILURE
+
+            Repository: ${{ github.repository }}
+            Branch/Tag: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+
+            Logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
-

@@ -40,15 +40,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Security scan
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety
+
+      - name: Run security scan
         run: |
           bandit -r . -f json -o bandit.json
           safety check || true
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: security-report
-          path: bandit.json
 
   build:
     needs: security

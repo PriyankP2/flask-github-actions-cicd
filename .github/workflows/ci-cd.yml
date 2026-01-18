@@ -127,8 +127,8 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "🚀 PRODUCTION Deployment Success"
-          to: priyankpandey02@gmail.com
-          from: GitHub Actions
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
           body: |
             Production deployment successful
             Repo: ${{ github.repository }}
@@ -149,8 +149,8 @@ jobs:
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "❌ PIPELINE FAILED"
-          to: priyankpandey02@gmail.com
-          from: GitHub Actions
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
           body: |
             Pipeline FAILED
             Repo: ${{ github.repository }}

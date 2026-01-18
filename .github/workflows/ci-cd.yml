@@ -2,50 +2,128 @@ name: Flask CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - staging
-    tags:
-      - "v*"
+    branches: [main, staging]
+    tags: ["v*"]
   pull_request:
 
 jobs:
+
   test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install pytest-cov flake8 bandit safety
 
-      - name: Run tests
+      - name: Lint
+        run: flake8 . || true
+
+      - name: Run tests + coverage
         run: |
-          python -m pytest
+          pytest --cov=app --cov-report=xml --cov-report=html
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: .
+
+  security:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Security scan
+        run: |
+          bandit -r . -f json -o bandit.json
+          safety check || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: bandit.json
+
+  build:
+    needs: security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create artifact
+        run: |
+          mkdir build
+          cp app.py build/
+          tar -czf flask-app.tar.gz build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flask-app-artifact
+          path: flask-app.tar.gz
 
   deploy-staging:
     if: github.ref == 'refs/heads/staging'
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to STAGING environment"
+      - run: echo "Deploying to STAGING server"
 
   deploy-production:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy to production
-        run: |
-          echo "Deploying to PRODUCTION environment"
+      - run: echo "Deploying to PRODUCTION server"
+
+  notify-success:
+    if: success()
+    needs: [deploy-staging, deploy-production]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send success email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.EMAIL_SERVER }}
+          server_port: ${{ secrets.EMAIL_PORT }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ CI/CD SUCCESS - Flask App"
+          body: |
+            Pipeline SUCCESS 🎉
+
+            Repo: ${{ github.repository }}
+            Branch/Tag: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+
+          to: ${{ secrets.EMAIL_TO }}
+          from: GitHub Actions
+
+  notify-failure:
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.EMAIL_SERVER }}
+          server_port: ${{ secrets.EMAIL_PORT }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ CI/CD FAILED - Flask App"
+          body: |
+            Pipeline FAILED ❌
+
+            Repo: ${{ github.repository }}
+            Branch/Tag: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+
+            Please check GitHub Actions logs.
+
+          to: ${{ secrets.EMAIL_TO }}
+          from: GitHub Actions

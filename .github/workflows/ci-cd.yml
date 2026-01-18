@@ -98,58 +98,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send SUCCESS email
+            - name: Send SUCCESS email
         if: success()
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: ${{ secrets.EMAIL_SERVER }}
-          server_port: ${{ secrets.EMAIL_PORT }}
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "✅ CI/CD SUCCESS - Flask App"
           body: |
-            🎉 PIPELINE SUCCESS
-
-            Repository : ${{ github.repository }}
-            Branch/Tag : ${{ github.ref_name }}
-
-            Commit SHA : ${{ github.sha }}
-            Triggered by : ${{ github.actor }}
-
-            Workflow : ${{ github.workflow }}
-            Run ID   : ${{ github.run_id }}
-
-            Logs:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Pipeline SUCCESS 🎉
+            Repo: ${{ github.repository }}
+            Ref: ${{ github.ref }}
+            Commit: ${{ github.sha }}
 
           to: ${{ secrets.EMAIL_TO }}
-          from: GitHub Actions
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
 
       - name: Send FAILURE email
         if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
-          server_address: ${{ secrets.EMAIL_SERVER }}
-          server_port: ${{ secrets.EMAIL_PORT }}
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "❌ CI/CD FAILED - Flask App"
           body: |
-            ❌ PIPELINE FAILURE
-
-            Repository : ${{ github.repository }}
-            Branch/Tag : ${{ github.ref_name }}
-
-            Commit SHA : ${{ github.sha }}
-            Triggered by : ${{ github.actor }}
-
-            Workflow : ${{ github.workflow }}
-            Run ID   : ${{ github.run_id }}
-
-            Logs:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Please check logs for details.
+            Pipeline FAILED ❌
+            Repo: ${{ github.repository }}
+            Ref: ${{ github.ref }}
+            Commit: ${{ github.sha }}
 
           to: ${{ secrets.EMAIL_TO }}
-          from: GitHub Actions
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
+

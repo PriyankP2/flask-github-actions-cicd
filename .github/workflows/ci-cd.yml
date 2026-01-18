@@ -82,12 +82,14 @@ jobs:
     steps:
       - run: echo "Deploying to PRODUCTION server"
 
-  notify-success:
-    if: success()
-    needs: [deploy-staging, deploy-production]
+    notify:
+    if: always()
+    needs: [test, security, build]
     runs-on: ubuntu-latest
+
     steps:
-      - name: Send success email
+      - name: Send SUCCESS email
+        if: success()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.EMAIL_SERVER }}
@@ -96,20 +98,25 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "✅ CI/CD SUCCESS - Flask App"
           body: |
-            Pipeline SUCCESS 🎉
+            🎉 PIPELINE SUCCESS
 
-            Repo: ${{ github.repository }}
-            Branch/Tag: ${{ github.ref }}
-            Commit: ${{ github.sha }}
+            Repository : ${{ github.repository }}
+            Branch/Tag : ${{ github.ref_name }}
+
+            Commit SHA : ${{ github.sha }}
+            Triggered by : ${{ github.actor }}
+
+            Workflow    : ${{ github.workflow }}
+            Run ID      : ${{ github.run_id }}
+
+            Logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions
 
-  notify-failure:
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send failure email
+      - name: Send FAILURE email
+        if: failure()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.EMAIL_SERVER }}
@@ -118,13 +125,24 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "❌ CI/CD FAILED - Flask App"
           body: |
-            Pipeline FAILED ❌
+            ❌ PIPELINE FAILURE
 
-            Repo: ${{ github.repository }}
-            Branch/Tag: ${{ github.ref }}
-            Commit: ${{ github.sha }}
+            Repository : ${{ github.repository }}
+            Branch/Tag : ${{ github.ref_name }}
 
-            Please check GitHub Actions logs.
+            Commit SHA : ${{ github.sha }}
+            Triggered by : ${{ github.actor }}
+
+            Failed Job : ${{ github.job }}
+
+            Workflow    : ${{ github.workflow }}
+            Run ID      : ${{ github.run_id }}
+
+            Logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Please check logs for details.
 
           to: ${{ secrets.EMAIL_TO }}
           from: GitHub Actions
+

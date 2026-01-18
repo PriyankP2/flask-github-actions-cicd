@@ -104,7 +104,7 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "✅ STAGING Deployment Success"
           to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_FROM }}
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
           body: |
             Staging deployment successful
             Repo: ${{ github.repository }}
@@ -128,7 +128,7 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "🚀 PRODUCTION Deployment Success"
           to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_FROM }}
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
           body: |
             Production deployment successful
             Repo: ${{ github.repository }}
@@ -150,7 +150,7 @@ jobs:
           password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "❌ PIPELINE FAILED"
           to: ${{ secrets.EMAIL_TO }}
-          from: ${{ secrets.EMAIL_FROM }}
+          from: GitHub Actions <${{ secrets.EMAIL_USERNAME }}>
           body: |
             Pipeline FAILED
             Repo: ${{ github.repository }}
